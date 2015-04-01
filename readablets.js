@@ -3,6 +3,7 @@ $.fn.readablets = function($o) {
 	var _o = $.extend({
 		compact: true,
 		twelvehour: true,
+		plusSign: true,
 		times: [60, 3600, 86400, 2592000, 31536000],
 		months: [
 			'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -11,7 +12,8 @@ $.fn.readablets = function($o) {
 		second: 's',
 		minute: 'm',
 		hour: 'h',
-		day: 'd'
+		day: 'd',
+		cbTitle: function($txt) { return $txt; }
 	}, $o),
 
 	_dm = function($ts) {
@@ -23,7 +25,10 @@ $.fn.readablets = function($o) {
 	},
 
 	_dmy_hm = function($ts) {
-		return _dmy($ts).replace(/\s/g, '-') + ' @ ' + _hhmm($ts);
+		var _hm = _hhmm($ts);
+
+		return _dmy($ts).replace(/\s/g, '-') +
+			(_hm.indexOf('00:00') === 0 ? '' : ' @ ' + _hhmm($ts));
 	},
 
 	_hhmm = function($ts) {
@@ -31,9 +36,9 @@ $.fn.readablets = function($o) {
 			_hh = $ts.getHours(),
 			_ap = ' am';
 
-		if (_o.twelvehour && (_hh === 0 || _hh > 12)) {
-			_hh = (_hh + 12) % 12;
-			_ap = ' pm';
+		if (_o.twelvehour && (_hh === 0 || _hh >= 12)) {
+			if (_hh) { _ap = ' pm'; }
+			if (_hh !== 12) { _hh = (_hh + 12) % 12; }
 		}
 
 		return _hh.toString().replace(/^\d$/, '0$&') + ':' + _mm +
@@ -61,6 +66,10 @@ $.fn.readablets = function($o) {
 			_o.future = false;
 		}
 
+		if (!_d) {
+			$ob.trigger('zero');
+		}
+
 		if (_d < _o.times[0])
 			{
 			_string = _d + _o.second;
@@ -69,7 +78,7 @@ $.fn.readablets = function($o) {
 		else if (_d < _o.times[1])
 			{
 			_string = Math.round(_d / 60) + _o.minute;
-			_reload($ob, 60000);
+			_reload($ob, _d < _o.times[0] * 2 ? 1000 : 60000);
 			}
 		else if (_d < _o.times[2])
 			{
@@ -91,14 +100,14 @@ $.fn.readablets = function($o) {
 			}
 
 		if ($.isFunction(_o.cbFormat)) {
-			_string = _o.cbFormat(_string);
+			_string = _o.cbFormat(_string, _d);
 		}
 
-		if (_o.future) {
+		if (_o.future && _o.plusSign && _d < _o.times[3]) {
 			_string = '+' + _string;
 		}
 
-		$ob.attr('title', _dmy_hm(_target))
+		$ob.attr('title', _o.cbTitle(_dmy_hm(_target)))
 			.html(_string);
 	},
 
